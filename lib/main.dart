@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:real_time_location_tracker/home_page.dart';
+import 'package:real_time_location_tracker/screen/home_page.dart';
 
 void main() {
   runApp(const MyApp());
