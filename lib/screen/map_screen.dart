@@ -5,6 +5,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:real_time_location_tracker/data/init_position.dart';
 import 'package:real_time_location_tracker/data/service/landmark_storage_service.dart';
+import 'package:real_time_location_tracker/data/widget/save_route_dialog.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -92,12 +93,13 @@ class _MapScreenState extends State<MapScreen> {
     };
   }
 
-  Future<void> _savingPolyline() async {
+  Future<void> savingPolyline() async {
     bool lastLocation = false;
 
     if (timer!.isActive) {
       timer!.cancel();
     }
+
     _findMe();
 
     if (mounted) {
@@ -106,6 +108,7 @@ class _MapScreenState extends State<MapScreen> {
 
     showDialog(
       context: context,
+
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Save Polyline'),
@@ -131,14 +134,11 @@ class _MapScreenState extends State<MapScreen> {
                       String key = _nameController.text.trim();
                       if (key.isNotEmpty) {
                         _addPoint(_me!);
-
                         Navigator.of(context).pop();
-
                         await LandmarkStorageService.saveLocationList(
                           _points,
                           key,
                         );
-
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text('Successfully saved as "$key"!'),
@@ -151,6 +151,37 @@ class _MapScreenState extends State<MapScreen> {
           ],
         );
       },
+    );
+  }
+
+  Future<void> _savingPolyline() async {
+    bool lastLocation = false;
+
+    if (timer!.isActive) {
+      timer!.cancel();
+    }
+    _findMe();
+
+    if (mounted) {
+      lastLocation = true;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => SaveRouteDialog(
+        controller: _nameController,
+        onSave: () async {
+          String key = _nameController.text.trim();
+          if (key.isNotEmpty) {
+            _addPoint(_me!);
+            await LandmarkStorageService.saveLocationList(_points, key);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Successfully saved as "$key"!')),
+            );
+          }
+          Navigator.of(context).pop();
+        },
+      ),
     );
   }
 

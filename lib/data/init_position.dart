@@ -29,4 +29,19 @@ class InitPosition {
       return null;
     }
   }
+
+  static Marker huePin(
+    LatLng position, {
+    String id = 'id',
+    String name = '',
+    String fact = '',
+    double hue = BitmapDescriptor.hueRed,
+  }) {
+    return Marker(
+      markerId: MarkerId(id),
+      position: position,
+      infoWindow: InfoWindow(title: name, snippet: fact),
+      icon: BitmapDescriptor.defaultMarkerWithHue(hue),
+    );
+  }
 }

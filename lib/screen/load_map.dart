@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:real_time_location_tracker/data/init_position.dart';
 import 'package:real_time_location_tracker/data/service/landmark_storage_service.dart';
@@ -20,24 +21,12 @@ class _LoadMapState extends State<LoadMap> {
   Future<void> _loadPolyline() async {
     final _route = await LandmarkStorageService.getLocationList(widget.name);
 
-    print('Route name: ${widget.name}');
-    print('Loaded points: ${_route.length}');
-    print('Coordinates: $_route');
-
     if (mounted) {
       setState(() {
         _point = _route;
       });
     }
     updateCamaraPosition();
-  }
-
-  Future<void> _printdata() async {
-    final _route = await LandmarkStorageService.getLocationList(widget.name);
-
-    print('Route name: ${widget.name}');
-    print('Loaded points: ${_route.length}');
-    print('Coordinates: $_route');
   }
 
   void updateCamaraPosition() {
@@ -51,6 +40,7 @@ class _LoadMapState extends State<LoadMap> {
   }
 
   Set<Polyline> _lines() {
+    if (_point.isEmpty) return {};
     return {
       Polyline(
         polylineId: PolylineId(widget.name),
@@ -61,10 +51,31 @@ class _LoadMapState extends State<LoadMap> {
     };
   }
 
+  Set<Marker> _markers() {
+    if (_point.isEmpty) return {};
+    LatLng start = _point.first;
+    LatLng end = _point.last;
+    return {
+      InitPosition.huePin(
+        start,
+        id: "start_point",
+        name: "start point",
+        fact: "${start.latitude}, ${start.longitude}",
+        hue: BitmapDescriptor.hueBlue,
+      ),
+      InitPosition.huePin(
+        end,
+        id: "end_point",
+        name: 'end point',
+        fact: "${end.latitude}, ${end.longitude}",
+        hue: BitmapDescriptor.hueGreen,
+      ),
+    };
+  }
+
   @override
   void initState() {
     _loadPolyline();
-
     super.initState();
   }
 
@@ -79,6 +90,7 @@ class _LoadMapState extends State<LoadMap> {
               child: GoogleMap(
                 initialCameraPosition: cameraPosition,
                 polylines: _lines(),
+                markers: _markers(),
                 onMapCreated: (controller) {
                   _map = controller;
                   updateCamaraPosition();
