@@ -52,14 +52,10 @@ class MyApp extends StatelessWidget {
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             elevation: 0,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            backgroundColor: Color.fromARGB(255, 231, 237, 234),
           ),
         ),
 
-        // Input Decoration (for your save route text fields)
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
           border: OutlineInputBorder(

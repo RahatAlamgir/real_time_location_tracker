@@ -4,26 +4,8 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class LandmarkStorageService {
-  static const String _lastLocationKey = 'last_google_map_location';
   static List<String> allKeys = [];
   static const String _allListkey = 'allKeys';
-
-  /// Save last Google Map location
-  static Future<void> saveLastLocation(LatLng latLng) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      _lastLocationKey,
-      jsonEncode({'latitude': latLng.latitude, 'longitude': latLng.longitude}),
-    );
-  }
-
-  static Future<LatLng?> getLastLocation() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String? jsonString = prefs.getString(_lastLocationKey);
-    if (jsonString == null) return null;
-    final map = jsonDecode(jsonString);
-    return LatLng(map['latitude'], map['longitude']);
-  }
 
   static Future<void> saveKey(String key, bool save) async {
     final prefs = await SharedPreferences.getInstance();
@@ -34,7 +16,7 @@ class LandmarkStorageService {
   static Future<List<String>> getAllKeys() async {
     final prefs = await SharedPreferences.getInstance();
 
-    List<String>? keylist = await prefs.getStringList(_allListkey);
+    List<String>? keylist = prefs.getStringList(_allListkey);
 
     if (keylist != null) {
       allKeys = keylist;

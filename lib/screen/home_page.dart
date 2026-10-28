@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:real_time_location_tracker/data/init_position.dart';
 import 'package:real_time_location_tracker/data/widget/deshboard_card.dart';
 import 'package:real_time_location_tracker/permission/permission.dart';
 
@@ -27,7 +26,6 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     _getRequest();
-    // TODO: implement initState
     super.initState();
   }
 
@@ -57,7 +55,6 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Hero Status Card
             Container(
               height: 180,
               decoration: BoxDecoration(
@@ -126,7 +123,6 @@ class _HomePageState extends State<HomePage> {
             ),
             const SizedBox(height: 24),
 
-            // Section Label
             Text(
               'Quick Actions',
               style: TextStyle(
@@ -137,7 +133,6 @@ class _HomePageState extends State<HomePage> {
             ),
             const SizedBox(height: 12),
 
-            // Navigation Cards Grid/List
             DashboardCard(
               title: 'Start Live Tracking',
               subtitle: 'Open map, record, and trace live routes',
@@ -169,5 +164,3 @@ class _HomePageState extends State<HomePage> {
     );
   }
 }
-
-// Reusable M3 Action Card Component

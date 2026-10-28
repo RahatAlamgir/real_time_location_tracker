@@ -3,8 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:real_time_location_tracker/data/init_position.dart';
+import 'package:real_time_location_tracker/data/service/init_position.dart';
 import 'package:real_time_location_tracker/data/service/landmark_storage_service.dart';
+import 'package:real_time_location_tracker/data/widget/custom_app_bar.dart';
 import 'package:real_time_location_tracker/data/widget/save_route_dialog.dart';
 
 class MapScreen extends StatefulWidget {
@@ -15,61 +16,87 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> {
-  late CameraPosition cameraPosition;
-  GoogleMapController? _map;
-  Timer? timer;
-  int fatchIntervalTimer = 5;
+  late CameraPosition _cameraPosition;
+  GoogleMapController? _mapController;
+  Timer? _timer;
+
+  int _fetchIntervalSeconds = 5;
   LatLng? _me;
-  bool finding = false;
-  bool recording = false;
+  bool _isFinding = false;
+  bool _isRecording = false;
 
   final TextEditingController _nameController = TextEditingController();
-
   List<LatLng> _points = [];
 
+  @override
+  void initState() {
+    super.initState();
+    _cameraPosition = InitPosition.openingCamera;
+    _findMe();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _nameController.dispose();
+    super.dispose();
+  }
+
   Future<void> _findMe() async {
-    setState(() {
-      finding = true;
-    });
+    setState(() => _isFinding = true);
 
     final Position? position = await InitPosition.getPosition();
     if (position != null) {
+      final newPos = LatLng(position.latitude, position.longitude);
       setState(() {
-        _me = LatLng(position.latitude, position.longitude);
-        finding = false;
+        _me = newPos;
+        _isFinding = false;
       });
-      if (mounted) {
-        _map?.animateCamera(
+
+      if (mounted && _mapController != null) {
+        _mapController!.animateCamera(
           CameraUpdate.newCameraPosition(
-            CameraPosition(target: _me!, zoom: 18),
+            CameraPosition(target: newPos, zoom: 18),
           ),
         );
       }
     } else {
-      setState(() {
-        finding = false;
-      });
+      setState(() => _isFinding = false);
     }
   }
 
-  void _recordPolyline() {
+  void _toggleRecordPolyline() {
     setState(() {
-      recording = !recording;
+      _isRecording = !_isRecording;
     });
-    if (recording) {
-      _recordingPolyline();
+
+    if (_isRecording) {
+      _startPeriodicRecording();
     } else {
       _savingPolyline();
     }
   }
 
-  void _recordingPolyline() {
-    timer = Timer.periodic(Duration(seconds: fatchIntervalTimer), (timer) {
-      print("10 seconds passed! Fetching location...");
-      _findMe();
-
-      _addPoint(_me!);
+  void _startPeriodicRecording() {
+    _timer?.cancel();
+    _timer = Timer.periodic(Duration(seconds: _fetchIntervalSeconds), (
+      timer,
+    ) async {
+      await _findMe();
+      if (_me != null) {
+        _addPoint(_me!);
+      }
     });
+  }
+
+  void _setInterval(int seconds) {
+    setState(() {
+      _fetchIntervalSeconds = seconds;
+    });
+
+    if (_isRecording) {
+      _startPeriodicRecording();
+    }
   }
 
   void _addPoint(LatLng position) {
@@ -77,15 +104,13 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _clearPoints() {
-    setState(() {
-      _points.clear();
-    });
+    setState(() => _points.clear());
   }
 
-  Set<Polyline> _lines() {
+  Set<Polyline> _buildPolylines() {
     return {
       Polyline(
-        polylineId: PolylineId('walk'),
+        polylineId: const PolylineId('walk_path'),
         color: Colors.teal,
         points: _points,
         width: 5,
@@ -93,78 +118,11 @@ class _MapScreenState extends State<MapScreen> {
     };
   }
 
-  Future<void> savingPolyline() async {
-    bool lastLocation = false;
-
-    if (timer!.isActive) {
-      timer!.cancel();
-    }
-
-    _findMe();
-
-    if (mounted) {
-      lastLocation = true;
-    }
-
-    showDialog(
-      context: context,
-
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Save Polyline'),
-          content: TextField(
-            controller: _nameController,
-            decoration: const InputDecoration(
-              hintText: 'Enter name (key)',
-              border: OutlineInputBorder(),
-            ),
-            autofocus: true,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: !lastLocation
-                  ? null
-                  : () async {
-                      String key = _nameController.text.trim();
-                      if (key.isNotEmpty) {
-                        _addPoint(_me!);
-                        Navigator.of(context).pop();
-                        await LandmarkStorageService.saveLocationList(
-                          _points,
-                          key,
-                        );
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Successfully saved as "$key"!'),
-                          ),
-                        );
-                      }
-                    },
-              child: const Text('Save'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   Future<void> _savingPolyline() async {
-    bool lastLocation = false;
+    _timer?.cancel();
+    await _findMe();
 
-    if (timer!.isActive) {
-      timer!.cancel();
-    }
-    _findMe();
-
-    if (mounted) {
-      lastLocation = true;
-    }
+    if (!mounted) return;
 
     showDialog(
       context: context,
@@ -172,12 +130,14 @@ class _MapScreenState extends State<MapScreen> {
         controller: _nameController,
         onSave: () async {
           String key = _nameController.text.trim();
-          if (key.isNotEmpty) {
+          if (key.isNotEmpty && _me != null) {
             _addPoint(_me!);
             await LandmarkStorageService.saveLocationList(_points, key);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Successfully saved as "$key"!')),
-            );
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Successfully saved as "$key"!')),
+              );
+            }
           }
           Navigator.of(context).pop();
         },
@@ -186,61 +146,190 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   @override
-  void dispose() {
-    if (timer != null) {
-      timer!.cancel();
-    }
-    super.dispose();
-  }
-
-  @override
-  void initState() {
-    cameraPosition = InitPosition.openingCamera;
-    _findMe();
-    super.initState();
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    final String currentSnippet = _me != null
+        ? '${_me!.latitude}, ${_me!.longitude}'
+        : 'Locating...';
+
     final Set<Marker> markers = {
       if (_me != null)
         Marker(
           markerId: const MarkerId('me'),
           position: _me!,
-          infoWindow: const InfoWindow(title: 'Me'),
-          flat: true,
+          infoWindow: InfoWindow(
+            title: 'My Current Location',
+            snippet: currentSnippet,
+          ),
         ),
     };
+
     return Scaffold(
-      appBar: AppBar(title: Text("Read-Time-Location-Tracker")),
-      body: Center(
-        child: Column(
-          children: [
-            SizedBox(height: 10),
-            Expanded(
-              child: GoogleMap(
-                initialCameraPosition: cameraPosition,
-                markers: markers,
-                polylines: _lines(),
-                onMapCreated: (controller) => _map = controller,
+      body: Stack(
+        children: [
+          // Google Map View
+          GoogleMap(
+            initialCameraPosition: _cameraPosition,
+            markers: markers,
+            polylines: _buildPolylines(),
+            myLocationButtonEnabled: false,
+            zoomControlsEnabled: false,
+            onMapCreated: (controller) => _mapController = controller,
+          ),
+          Column(
+            children: [
+              CustomAppBar(
+                colorScheme: colorScheme,
+                name: "Real-Time Location Tracker",
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16.0,
+                  vertical: 8.0,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: colorScheme.surface,
+                        borderRadius: BorderRadius.circular(30),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                        border: Border.all(color: colorScheme.outlineVariant),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildIntervalChip(
+                            label: '5s',
+                            seconds: 5,
+                            colorScheme: colorScheme,
+                          ),
+                          const SizedBox(width: 4),
+                          _buildIntervalChip(
+                            label: '10s',
+                            seconds: 10,
+                            colorScheme: colorScheme,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          Positioned(
+            left: 20,
+            right: 20,
+            bottom: 32,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              decoration: BoxDecoration(
+                color: colorScheme.surface,
+                borderRadius: BorderRadius.circular(40),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.15),
+                    blurRadius: 20,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+                border: Border.all(color: colorScheme.outlineVariant, width: 1),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  ElevatedButton(
+                    onPressed: _isFinding ? null : _findMe,
+                    child: _isFinding
+                        ? SizedBox(
+                            height: 14,
+                            width: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Text(
+                            'Find Me',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: colorScheme.onSurface,
+                            ),
+                          ),
+                  ),
+
+                  ElevatedButton(
+                    onPressed: _toggleRecordPolyline,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _isRecording
+                          ? colorScheme.error
+                          : colorScheme.primary,
+                    ),
+                    child: Text(
+                      _isRecording
+                          ? 'Stop (${_fetchIntervalSeconds}s)'
+                          : 'Start Recording',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+
+                  ElevatedButton(
+                    onPressed: _clearPoints,
+                    child: Text(
+                      'Clear',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: colorScheme.onSurface,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            Wrap(
-              children: [
-                ElevatedButton(
-                  onPressed: finding ? null : _findMe,
-                  child: Text(finding ? 'Finding' : 'Find me'),
-                ),
+          ),
+        ],
+      ),
+    );
+  }
 
-                ElevatedButton(
-                  onPressed: _recordPolyline,
-                  child: Text(recording ? 'Stop Recording' : 'Start Recording'),
-                ),
-                ElevatedButton(onPressed: _clearPoints, child: Text('clear')),
-              ],
-            ),
-            SizedBox(height: 40),
-          ],
+  Widget _buildIntervalChip({
+    required String label,
+    required int seconds,
+    required ColorScheme colorScheme,
+  }) {
+    final bool isSelected = _fetchIntervalSeconds == seconds;
+    return GestureDetector(
+      onTap: () => _setInterval(seconds),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? colorScheme.primaryContainer : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            color: isSelected
+                ? colorScheme.primary
+                : colorScheme.onSurfaceVariant,
+          ),
         ),
       ),
     );
