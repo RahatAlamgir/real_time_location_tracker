@@ -3,8 +3,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:real_time_location_tracker/data/service/init_position.dart';
 import 'package:real_time_location_tracker/data/service/landmark_storage_service.dart';
-import 'package:real_time_location_tracker/data/widget/custom_app_bar.dart';
-import 'package:real_time_location_tracker/data/widget/load_map_matrix_point.dart';
+import 'package:real_time_location_tracker/presentation/widget/custom_app_bar.dart';
+import 'package:real_time_location_tracker/presentation/widget/load_map_matrix_point.dart';
 
 class LoadMap extends StatefulWidget {
   const LoadMap({super.key, required this.name});

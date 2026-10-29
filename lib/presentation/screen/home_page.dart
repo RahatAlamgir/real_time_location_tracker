@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:real_time_location_tracker/data/widget/deshboard_card.dart';
-import 'package:real_time_location_tracker/permission/permission.dart';
+import 'package:provider/provider.dart';
+import 'package:real_time_location_tracker/data/provider/app_status_provider.dart';
+import 'package:real_time_location_tracker/presentation/widget/deshboard_card.dart';
 
-import 'package:real_time_location_tracker/screen/map_screen.dart';
-import 'package:real_time_location_tracker/screen/saved_map.dart';
+import 'package:real_time_location_tracker/presentation/screen/map_screen.dart';
+import 'package:real_time_location_tracker/presentation/screen/saved_map.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -13,19 +14,8 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  bool engineActive = false;
-
-  Future<void> _getRequest() async {
-    final permission = await Permission.hasLocationPermission();
-
-    setState(() {
-      engineActive = permission;
-    });
-  }
-
   @override
   void initState() {
-    _getRequest();
     super.initState();
   }
 
@@ -67,32 +57,36 @@ class _HomePageState extends State<HomePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 6,
-                        horizontal: 14,
-                      ),
-                      decoration: BoxDecoration(
-                        color: colorScheme.surface,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: engineActive
-                          ? Text(
-                              'GPS Engine Active',
-                              style: TextStyle(
-                                color: colorScheme.primary,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 12,
-                              ),
-                            )
-                          : Text(
-                              'GPS Permission denied',
-                              style: TextStyle(
-                                color: Colors.red,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 12,
-                              ),
-                            ),
+                    Consumer<AppStatusProvider>(
+                      builder: (context, provider, _) {
+                        return Container(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 6,
+                            horizontal: 14,
+                          ),
+                          decoration: BoxDecoration(
+                            color: colorScheme.surface,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: provider.locationPermission
+                              ? Text(
+                                  'GPS Engine Active',
+                                  style: TextStyle(
+                                    color: colorScheme.primary,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12,
+                                  ),
+                                )
+                              : Text(
+                                  'GPS Permission denied',
+                                  style: TextStyle(
+                                    color: Colors.red,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                        );
+                      },
                     ),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,

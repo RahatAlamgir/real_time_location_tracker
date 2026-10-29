@@ -1,6 +1,8 @@
+import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:real_time_location_tracker/permission/permission.dart';
+import 'package:provider/provider.dart';
+import 'package:real_time_location_tracker/data/provider/app_status_provider.dart';
 
 class InitPosition {
   static const CameraPosition openingCamera = CameraPosition(
@@ -16,8 +18,8 @@ class InitPosition {
     LatLng(23.740, 90.43),
   ];
 
-  static Future<Position?> getPosition() async {
-    if (await Permission.hasLocationPermission()) {
+  static Future<Position?> getPosition(BuildContext context) async {
+    if (context.read<AppStatusProvider>().locationPermission) {
       final Position position = await Geolocator.getCurrentPosition(
         locationSettings: LocationSettings(
           accuracy: .high,

@@ -9,6 +9,7 @@ class LandmarkStorageService {
 
   static Future<void> saveKey(String key, bool save) async {
     final prefs = await SharedPreferences.getInstance();
+    await getAllKeys();
     save ? allKeys.add(key) : allKeys.remove(key);
     await prefs.setStringList(_allListkey, allKeys);
   }
@@ -27,7 +28,7 @@ class LandmarkStorageService {
   static Future<void> removeLocationList(String namekey) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(namekey);
-    saveKey(namekey, false);
+    await saveKey(namekey, false);
   }
 
   static Future<void> saveLocationList(
